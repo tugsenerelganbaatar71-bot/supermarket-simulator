@@ -21,7 +21,7 @@ type StorageSceneProps = {
 function palletPosition(index: number): [number, number, number] {
   const col = index % COLUMNS;
   const row = Math.floor(index / COLUMNS);
-  return [(col - (COLUMNS - 1) / 2) * 2.6, 0, row * 3 - 0.5];
+  return [(col - (COLUMNS - 1) / 2) * 3.2, 0, row * 3 - 0.5];
 }
 
 export function StorageScene({ products, storage }: StorageSceneProps) {
@@ -106,7 +106,7 @@ function Truck() {
   });
 
   return (
-    <group ref={ref} position={[-9, 0, 4.5]} rotation-y={Math.PI / 2}>
+    <group ref={ref} position={[-10.5, 0, 0]} rotation-y={Math.PI / 2}>
       <mesh position={[0, 1, -0.9]} castShadow>
         <boxGeometry args={[1.8, 1.8, 3]} />
         <meshStandardMaterial color="#f5f5f5" />
