@@ -31,23 +31,49 @@ export function ExpansionScene({ shelves, checkouts, level }: ExpansionSceneProp
   // Counters are centered, so draw the ghost one slot beyond the owned ones.
   const counterSlots = nextCounter === null ? checkouts : checkouts + 1;
 
+  // The building grows with the store: deeper for each new row of shelves,
+  // wider for each extra checkout counter.
+  const rows = Math.ceil(Math.max(shelves.length + (nextShelf !== null ? 1 : 0), 1) / COLUMNS);
+  const backZ = -2 - (rows - 1) * 3 - 2;
+  const frontZ = 8;
+  const depth = frontZ - backZ;
+  const centerZ = (frontZ + backZ) / 2;
+  const width = Math.max(15, counterSlots * 3 + 5);
+
   return (
-    <Canvas shadows camera={{ position: [0, 9, 12], fov: 50 }} className="touch-none">
-      <color attach="background" args={["#fdf3dc"]} />
+    <Canvas shadows camera={{ position: [0, 13, 19], fov: 50 }} className="touch-none">
+      <color attach="background" args={["#bfe3ff"]} />
       <ambientLight intensity={0.75} />
       <directionalLight position={[6, 14, 8]} intensity={1.3} castShadow shadow-mapSize={[1024, 1024]} />
 
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0, -2]} receiveShadow>
-        <planeGeometry args={[24, 22]} />
+      {/* lawn and sidewalk around the building */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.03, 0]} receiveShadow>
+        <planeGeometry args={[80, 80]} />
+        <meshStandardMaterial color="#9ccc65" />
+      </mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, frontZ + 1.5]} receiveShadow>
+        <planeGeometry args={[80, 3]} />
+        <meshStandardMaterial color="#cfd8dc" />
+      </mesh>
+
+      {/* building: floor, back and side walls */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0, centerZ]} receiveShadow>
+        <planeGeometry args={[width, depth]} />
         <meshStandardMaterial color="#f4f1ea" />
       </mesh>
-      <mesh position={[0, 1.5, -12.5]}>
-        <boxGeometry args={[24, 3, 0.3]} />
+      <mesh position={[0, 1.5, backZ]} castShadow>
+        <boxGeometry args={[width, 3, 0.3]} />
         <meshStandardMaterial color="#ffd180" />
       </mesh>
-      <Html position={[0, 3.6, -12]} center distanceFactor={12} pointerEvents="none">
-        <div className="rounded-lg bg-amber-500 px-5 py-1.5 text-lg font-black text-white shadow">
-          ⭐ Store level {level}
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[(side * width) / 2, 1.5, centerZ]} castShadow>
+          <boxGeometry args={[0.3, 3, depth]} />
+          <meshStandardMaterial color="#ffcc80" />
+        </mesh>
+      ))}
+      <Html position={[0, 3.8, backZ]} center distanceFactor={12} pointerEvents="none">
+        <div className="whitespace-nowrap rounded-lg bg-amber-500 px-5 py-1.5 text-lg font-black text-white shadow">
+          ⭐ Store level {level} · {Math.round(width)}×{Math.round(depth)} m
         </div>
       </Html>
 
@@ -61,7 +87,7 @@ export function ExpansionScene({ shelves, checkouts, level }: ExpansionSceneProp
         return <Counter3D key={i} x={counterX(i, counterSlots)} ghost={ghost} />;
       })}
 
-      <OrbitControls target={[0, 0, 1]} minDistance={6} maxDistance={30} maxPolarAngle={Math.PI / 2.2} />
+      <OrbitControls target={[0, 0, 0]} minDistance={6} maxDistance={45} maxPolarAngle={Math.PI / 2.2} />
     </Canvas>
   );
 }
