@@ -71,7 +71,7 @@ function queueSpot(index: number, checkouts: number): Vector3 {
 
 export function StoreScene({ shelves, prices, checkouts, customers, leaving }: StoreSceneProps) {
   return (
-    <Canvas shadows camera={{ position: [0, 11, 14], fov: 45 }} className="touch-none">
+    <Canvas shadows camera={{ position: [0, 8, 11], fov: 50 }} className="touch-none">
       <color attach="background" args={["#dff3ea"]} />
       <ambientLight intensity={0.7} />
       <directionalLight
@@ -125,7 +125,7 @@ export function StoreScene({ shelves, prices, checkouts, customers, leaving }: S
       ))}
 
       <OrbitControls
-        target={[0, 0, 0]}
+        target={[0, 0, 1]}
         minDistance={6}
         maxDistance={30}
         maxPolarAngle={Math.PI / 2.2}
