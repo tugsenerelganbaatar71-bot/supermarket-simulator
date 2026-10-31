@@ -14,6 +14,8 @@ type ExpansionSceneProps = {
 };
 
 const COLUMNS = 4;
+// Floor space is doubled in both directions (extra room inside the store).
+const FLOOR_SCALE = 2;
 
 function shelfPosition(index: number): [number, number, number] {
   const col = index % COLUMNS;
@@ -34,14 +36,14 @@ export function ExpansionScene({ shelves, checkouts, level }: ExpansionSceneProp
   // The building grows with the store: deeper for each new row of shelves,
   // wider for each extra checkout counter.
   const rows = Math.ceil(Math.max(shelves.length + (nextShelf !== null ? 1 : 0), 1) / COLUMNS);
-  const backZ = -2 - (rows - 1) * 3 - 2;
   const frontZ = 8;
+  const backZ = frontZ - FLOOR_SCALE * (frontZ - (-2 - (rows - 1) * 3 - 2));
   const depth = frontZ - backZ;
   const centerZ = (frontZ + backZ) / 2;
-  const width = Math.max(15, counterSlots * 3 + 5);
+  const width = FLOOR_SCALE * Math.max(15, counterSlots * 3 + 5);
 
   return (
-    <Canvas shadows camera={{ position: [0, 13, 19], fov: 50 }} className="touch-none">
+    <Canvas shadows camera={{ position: [0, 22, 32], fov: 50 }} className="touch-none">
       <color attach="background" args={["#bfe3ff"]} />
       <ambientLight intensity={0.75} />
       <directionalLight position={[6, 14, 8]} intensity={1.3} castShadow shadow-mapSize={[1024, 1024]} />
@@ -87,7 +89,7 @@ export function ExpansionScene({ shelves, checkouts, level }: ExpansionSceneProp
         return <Counter3D key={i} x={counterX(i, counterSlots)} ghost={ghost} />;
       })}
 
-      <OrbitControls target={[0, 0, 0]} minDistance={6} maxDistance={45} maxPolarAngle={Math.PI / 2.2} />
+      <OrbitControls target={[0, 0, 0]} minDistance={6} maxDistance={70} maxPolarAngle={Math.PI / 2.2} />
     </Canvas>
   );
 }
