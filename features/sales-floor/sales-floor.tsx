@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatMoney, getProduct } from "@/features/shared/game-state";
 import { GameLoading, TopBar } from "@/features/shared/top-bar";
 import { readGame, resetGame, useGame, writeGame } from "@/features/shared/use-game";
-import { MAX_QUEUE, runTick, type Customer } from "./simulation";
+import { MAX_QUEUE, payCustomer, runTick, type Customer } from "./simulation";
 import { StoreScene, type LeavingCustomer } from "./store-scene";
 
 const TICK_MS = 1000;
@@ -19,6 +19,8 @@ export default function SalesFloor() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [leaving, setLeaving] = useState<LeavingCustomer[]>([]);
   const [log, setLog] = useState<string[]>([]);
+  const [entered, setEntered] = useState<Record<number, string>>({});
+  const [wrong, setWrong] = useState<number | null>(null); // customer id with a wrong total
   const queueRef = useRef<Customer[]>([]);
   const nextIdRef = useRef(1);
 
@@ -46,12 +48,34 @@ export default function SalesFloor() {
     return () => window.clearInterval(timer);
   }, [open]);
 
+  // The player adds up the basket and types the total; a correct total rings the customer up.
+  function handleCharge(customer: Customer) {
+    if (Number(entered[customer.id]) !== customer.total) {
+      setWrong(customer.id);
+      return;
+    }
+    const previous = queueRef.current;
+    const counterIndex = previous.findIndex((c) => c.id === customer.id);
+    if (counterIndex === -1) return;
+    writeGame(payCustomer(readGame(), customer));
+    queueRef.current = previous.filter((c) => c.id !== customer.id);
+    setCustomers(queueRef.current);
+    setLeaving((prev) => [
+      ...prev.filter((l) => l.until > Date.now()),
+      { id: customer.id, counterIndex, until: Date.now() + LEAVE_MS },
+    ]);
+    setLog((prev) => [`${customer.emoji} paid ${customer.total} at the checkout`, ...prev].slice(0, LOG_SIZE));
+    setWrong(null);
+  }
+
   function handleReset() {
     if (!window.confirm("Start over? All money, stock and upgrades will be lost.")) return;
     queueRef.current = [];
     setCustomers([]);
     setLeaving([]);
     setLog([]);
+    setEntered({});
+    setWrong(null);
     resetGame();
   }
 
@@ -66,7 +90,7 @@ export default function SalesFloor() {
             <div>
               <h1 className="text-2xl font-bold">Sales Floor</h1>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Customers take products from the shelves and pay at the checkout.
+                Customers take products from the shelves. Add up their basket at the checkout and type the total.
               </p>
             </div>
             <div className="flex gap-2">
@@ -123,19 +147,51 @@ export default function SalesFloor() {
                   return (
                     <div
                       key={i}
-                      className="flex w-36 flex-col items-center rounded-xl border-2 border-dashed border-emerald-300 p-3 text-center dark:border-emerald-800"
+                      className="flex w-40 flex-col items-center rounded-xl border-2 border-dashed border-emerald-300 p-3 text-center dark:border-emerald-800"
                     >
                       <span className="text-xs text-zinc-500">Counter {i + 1}</span>
                       <span className="my-1 text-3xl">{customer ? customer.emoji : "🧾"}</span>
-                      <span className="min-h-5 text-sm">
-                        {customer
-                          ? customer.basket.map((b) => getProduct(b.productId).emoji).join("")
-                          : "Free"}
-                      </span>
-                      {customer && (
-                        <span className="text-sm font-semibold text-emerald-600">
-                          {formatMoney(customer.total)}
-                        </span>
+                      {customer ? (
+                        <>
+                          <ul className="my-1 space-y-0.5 text-sm">
+                            {customer.basket.map((item, n) => (
+                              <li key={n}>
+                                {getProduct(item.productId).emoji} {formatMoney(item.price)}
+                              </li>
+                            ))}
+                          </ul>
+                          <form
+                            className="mt-1 flex w-full flex-col gap-1"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleCharge(customer);
+                            }}
+                          >
+                            <input
+                              type="number"
+                              min={0}
+                              inputMode="numeric"
+                              placeholder="Total $"
+                              value={entered[customer.id] ?? ""}
+                              onChange={(e) => {
+                                setEntered((prev) => ({ ...prev, [customer.id]: e.target.value }));
+                                setWrong(null);
+                              }}
+                              className="w-full rounded-lg border border-zinc-300 px-2 py-1 text-center text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                            />
+                            <button
+                              type="submit"
+                              className="rounded-lg bg-emerald-600 py-1 text-sm font-semibold text-white hover:bg-emerald-700"
+                            >
+                              Charge
+                            </button>
+                            {wrong === customer.id && (
+                              <span className="text-xs text-rose-500">Wrong total, add it up again</span>
+                            )}
+                          </form>
+                        </>
+                      ) : (
+                        <span className="min-h-5 text-sm">Free</span>
                       )}
                     </div>
                   );

@@ -9,11 +9,9 @@ export type Customer = {
   emoji: string;
   basket: BasketItem[];
   total: number;
-  serviceLeft: number; // ticks left at the checkout counter
 };
 
 export const MAX_QUEUE = 8;
-const SERVICE_TICKS = 2;
 const CUSTOMER_FACES = ["🧑", "👩", "👨", "👵", "👴", "👧", "🧔", "👱"];
 
 function randomInt(max: number) {
@@ -27,41 +25,31 @@ export function buyChance(price: number, suggestedPrice: number) {
   return Math.max(0, 2 - price / suggestedPrice);
 }
 
+/** The player rang up this customer: money comes in and the sale is counted. */
+export function payCustomer(game: GameState, customer: Customer): GameState {
+  const stats = {
+    ...game.stats,
+    unitsSold: { ...game.stats.unitsSold },
+    revenueByProduct: { ...game.stats.revenueByProduct },
+  };
+  stats.income += customer.total;
+  stats.customersServed += 1;
+  for (const item of customer.basket) {
+    stats.unitsSold[item.productId] = (stats.unitsSold[item.productId] ?? 0) + 1;
+    stats.revenueByProduct[item.productId] =
+      (stats.revenueByProduct[item.productId] ?? 0) + item.price;
+  }
+  return { ...game, money: game.money + customer.total, stats };
+}
+
 export function runTick(
   game: GameState,
   queue: Customer[],
   nextId: number,
 ): { game: GameState; queue: Customer[]; events: string[] } {
   const events: string[] = [];
-  let money = game.money;
-  const stats = {
-    ...game.stats,
-    unitsSold: { ...game.stats.unitsSold },
-    revenueByProduct: { ...game.stats.revenueByProduct },
-  };
-
-  // 1. Checkout: each counter serves the customer at the front of its line.
-  const remaining: Customer[] = [];
-  queue.forEach((customer, index) => {
-    if (index >= game.checkouts) {
-      remaining.push(customer);
-      return;
-    }
-    const serviceLeft = customer.serviceLeft - 1;
-    if (serviceLeft > 0) {
-      remaining.push({ ...customer, serviceLeft });
-      return;
-    }
-    money += customer.total;
-    stats.income += customer.total;
-    stats.customersServed += 1;
-    for (const item of customer.basket) {
-      stats.unitsSold[item.productId] = (stats.unitsSold[item.productId] ?? 0) + 1;
-      stats.revenueByProduct[item.productId] =
-        (stats.revenueByProduct[item.productId] ?? 0) + item.price;
-    }
-    events.push(`${customer.emoji} paid $${customer.total} at the checkout`);
-  });
+  // 1. Customers at the counters wait until the player rings them up (see payCustomer).
+  const remaining: Customer[] = [...queue];
 
   // 2. Maybe a new customer walks in and picks products from the shelves.
   const shelves = game.shelves.map((shelf) => ({ ...shelf }));
@@ -92,7 +80,7 @@ export function runTick(
 
       if (basket.length > 0) {
         const total = basket.reduce((sum, item) => sum + item.price, 0);
-        remaining.push({ id: nextId, emoji, basket, total, serviceLeft: SERVICE_TICKS });
+        remaining.push({ id: nextId, emoji, basket, total });
       } else if (tooExpensive) {
         events.push(`${emoji} thought the prices were too high and left`);
       } else {
@@ -102,7 +90,7 @@ export function runTick(
   }
 
   return {
-    game: { ...game, money, shelves, stats },
+    game: { ...game, shelves },
     queue: remaining,
     events,
   };
