@@ -9,6 +9,7 @@ import {
 } from "@/features/shared/game-state";
 import { GameLoading, TopBar } from "@/features/shared/top-bar";
 import { updateGame, useGame } from "@/features/shared/use-game";
+import { ExpansionScene } from "./expansion-scene";
 import {
   buyCheckout,
   buyShelf,
@@ -50,6 +51,13 @@ function Upgrades({ game }: { game: GameState }) {
           Spend your earnings to grow the store. Every upgrade raises your store level.
         </p>
       </div>
+
+      <section className="relative h-[400px] overflow-hidden rounded-2xl shadow-sm">
+        <ExpansionScene shelves={game.shelves} checkouts={game.checkouts} level={game.level} />
+        <p className="pointer-events-none absolute bottom-2 left-3 rounded bg-white/80 px-2 py-1 text-xs text-zinc-600">
+          Your store · see-through pieces are your next upgrades · drag to rotate
+        </p>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
         <UpgradeCard
