@@ -22,6 +22,7 @@ import {
   restockShelf,
   setPrice,
 } from "./stock-actions";
+import { StorageScene } from "./storage-scene";
 
 const ORDER_SIZES = [5, 10, 25];
 
@@ -41,6 +42,13 @@ export default function StockOrder() {
               Buy products from the supplier, set your prices, and fill the shelves.
             </p>
           </div>
+
+          <section className="relative h-[380px] overflow-hidden rounded-2xl shadow-sm">
+            <StorageScene products={game.unlockedProducts} storage={game.storage} />
+            <p className="pointer-events-none absolute bottom-2 left-3 rounded bg-white/80 px-2 py-1 text-xs text-zinc-600">
+              Storage room · 1 crate = 5 units · drag to rotate, scroll to zoom
+            </p>
+          </section>
 
           <section className="overflow-x-auto rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
             <table className="w-full text-left text-sm">
