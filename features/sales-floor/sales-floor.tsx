@@ -15,6 +15,7 @@ const LEAVE_MS = 3000; // how long a paid customer stays visible walking out
 export default function SalesFloor() {
   const game = useGame();
   const [open, setOpen] = useState(true);
+  const [walking, setWalking] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [leaving, setLeaving] = useState<LeavingCustomer[]>([]);
   const [log, setLog] = useState<string[]>([]);
@@ -68,14 +69,22 @@ export default function SalesFloor() {
                 Customers take products from the shelves and pay at the checkout.
               </p>
             </div>
-            <button
-              onClick={() => setOpen((o) => !o)}
-              className={`rounded-xl px-5 py-2.5 font-semibold text-white ${
-                open ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-600 hover:bg-emerald-700"
-              }`}
-            >
-              {open ? "⏸ Close store" : "▶ Open store"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setWalking((w) => !w)}
+                className="rounded-xl bg-sky-600 px-5 py-2.5 font-semibold text-white hover:bg-sky-700"
+              >
+                {walking ? "🚪 Exit walk mode" : "🚶 Walk inside"}
+              </button>
+              <button
+                onClick={() => setOpen((o) => !o)}
+                className={`rounded-xl px-5 py-2.5 font-semibold text-white ${
+                  open ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+              >
+                {open ? "⏸ Close store" : "▶ Open store"}
+              </button>
+            </div>
           </div>
 
           <section className="relative h-[520px] overflow-hidden rounded-2xl shadow-sm">
@@ -85,9 +94,13 @@ export default function SalesFloor() {
               checkouts={game.checkouts}
               customers={customers}
               leaving={leaving}
+              walking={walking}
+              onExitWalk={() => setWalking(false)}
             />
             <p className="pointer-events-none absolute bottom-2 left-3 rounded bg-white/80 px-2 py-1 text-xs text-zinc-600">
-              Drag to rotate · scroll to zoom · right-drag to move
+              {walking
+                ? "Click the scene to look around · W A S D to walk · Shift to run · Esc to exit"
+                : "Drag to rotate · scroll to zoom · right-drag to move"}
             </p>
             {game.shelves.some((shelf) => shelf.quantity === 0) && (
               <Link

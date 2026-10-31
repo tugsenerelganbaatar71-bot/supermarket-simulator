@@ -5,7 +5,9 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3, type Group } from "three";
 import { SHELF_CAPACITY, getProduct, type Shelf } from "@/features/shared/game-state";
+import { City } from "./city";
 import type { Customer } from "./simulation";
+import { Walker, type Obstacle } from "./walker";
 
 // 3D view of the sales floor (three.js via @react-three/fiber).
 
@@ -21,6 +23,8 @@ type StoreSceneProps = {
   checkouts: number;
   customers: Customer[];
   leaving: LeavingCustomer[];
+  walking: boolean; // first-person mode instead of the orbit camera
+  onExitWalk: () => void;
 };
 
 type Look = { color: string; shape: "box" | "sphere" | "cylinder"; size: number };
@@ -49,8 +53,9 @@ const ITEMS_PER_LEVEL = SHELF_CAPACITY / SHELF_LEVELS.length;
 const COUNTER_Z = 5;
 const SERVE_Z = 4.2; // where the customer being served stands
 const QUEUE_SPACING = 0.7;
-const ENTRANCE = new Vector3(-10, 0, 6);
-const EXIT = new Vector3(10, 0, 7);
+// Customers arrive from and leave to the sidewalk in front of the store.
+const ENTRANCE = new Vector3(-10, 0, 11);
+const EXIT = new Vector3(10, 0, 11);
 
 function shelfPosition(index: number): [number, number, number] {
   const col = index % SHELF_COLUMNS;
@@ -69,10 +74,32 @@ function queueSpot(index: number, checkouts: number): Vector3 {
   return new Vector3(counterX(lane, checkouts), 0, SERVE_Z - depth * QUEUE_SPACING);
 }
 
-export function StoreScene({ shelves, prices, checkouts, customers, leaving }: StoreSceneProps) {
+export function StoreScene({
+  shelves,
+  prices,
+  checkouts,
+  customers,
+  leaving,
+  walking,
+  onExitWalk,
+}: StoreSceneProps) {
+  // Things the first-person player cannot walk through.
+  const obstacles: Obstacle[] = [
+    ...shelves.map((_, i) => {
+      const [x, , z] = shelfPosition(i);
+      return { x, z, halfW: SHELF_WIDTH / 2, halfD: SHELF_DEPTH / 2 };
+    }),
+    ...Array.from({ length: checkouts }, (_, i) => ({
+      x: counterX(i, checkouts),
+      z: COUNTER_Z,
+      halfW: 0.9,
+      halfD: 0.4,
+    })),
+  ];
+
   return (
-    <Canvas shadows camera={{ position: [0, 8, 11], fov: 50 }} className="touch-none">
-      <color attach="background" args={["#dff3ea"]} />
+    <Canvas shadows camera={{ position: [0, 14, 24], fov: 50, far: 400 }} className="touch-none">
+      <color attach="background" args={["#bfe3ff"]} />
       <ambientLight intensity={0.7} />
       <directionalLight
         position={[6, 14, 8]}
@@ -85,6 +112,7 @@ export function StoreScene({ shelves, prices, checkouts, customers, leaving }: S
         shadow-camera-bottom={-14}
       />
 
+      <City />
       <Building />
 
       {shelves.map((shelf, i) => (
@@ -124,12 +152,16 @@ export function StoreScene({ shelves, prices, checkouts, customers, leaving }: S
         />
       ))}
 
-      <OrbitControls
-        target={[0, 0, 1]}
-        minDistance={6}
-        maxDistance={30}
-        maxPolarAngle={Math.PI / 2.2}
-      />
+      {walking ? (
+        <Walker obstacles={obstacles} onExit={onExitWalk} />
+      ) : (
+        <OrbitControls
+          target={[0, 0, 3]}
+          minDistance={6}
+          maxDistance={60}
+          maxPolarAngle={Math.PI / 2.2}
+        />
+      )}
     </Canvas>
   );
 }
@@ -151,12 +183,29 @@ function Building() {
           SUPERMARKET
         </div>
       </Html>
+      {/* side walls; the front is open to the street */}
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 12.15, 1.5, -1.75]} castShadow receiveShadow>
+          <boxGeometry args={[0.3, 3, 21.5]} />
+          <meshStandardMaterial color="#9ad3bc" />
+        </mesh>
+      ))}
+      {/* front beam with the shop sign */}
+      <mesh position={[0, 3.3, 9.1]} castShadow>
+        <boxGeometry args={[24.6, 0.9, 0.4]} />
+        <meshStandardMaterial color="#00897b" />
+      </mesh>
+      <Html position={[0, 3.3, 9.4]} center transform distanceFactor={8} pointerEvents="none">
+        <div className="rounded-lg bg-white px-6 py-1 text-3xl font-black tracking-widest text-emerald-700">
+          SUPERMARKET
+        </div>
+      </Html>
       {/* entrance and exit mats */}
-      <mesh rotation-x={-Math.PI / 2} position={[ENTRANCE.x + 0.5, 0.02, ENTRANCE.z]}>
+      <mesh rotation-x={-Math.PI / 2} position={[ENTRANCE.x + 0.5, 0.02, 8]}>
         <planeGeometry args={[2, 2]} />
         <meshStandardMaterial color="#43a047" />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[EXIT.x - 0.5, 0.02, EXIT.z]}>
+      <mesh rotation-x={-Math.PI / 2} position={[EXIT.x - 0.5, 0.02, 8]}>
         <planeGeometry args={[2, 2]} />
         <meshStandardMaterial color="#e53935" />
       </mesh>
