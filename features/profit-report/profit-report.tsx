@@ -3,6 +3,7 @@
 import { formatMoney, getProduct, type GameState } from "@/features/shared/game-state";
 import { GameLoading, TopBar } from "@/features/shared/top-bar";
 import { useGame } from "@/features/shared/use-game";
+import { ReportScene } from "./report-scene";
 
 const TOP_SELLERS = 5;
 
@@ -39,6 +40,22 @@ function Report({ game }: { game: GameState }) {
           How your store is doing so far.
         </p>
       </div>
+
+      <section className="relative h-[380px] overflow-hidden rounded-2xl shadow-sm">
+        <ReportScene
+          income={income}
+          spending={spending}
+          sellers={bestSellers.map(({ product, units }) => ({
+            id: product.id,
+            emoji: product.emoji,
+            name: product.name,
+            units,
+          }))}
+        />
+        <p className="pointer-events-none absolute bottom-2 left-3 rounded bg-white/80 px-2 py-1 text-xs text-zinc-600">
+          Drag to rotate · scroll to zoom
+        </p>
+      </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile label="Total income" value={formatMoney(income)} tone="text-emerald-600" />
