@@ -1,45 +1,33 @@
 import Link from "next/link";
+import { EntranceScene } from "@/features/store-entrance/entrance-scene";
 import { logout } from "./auth/actions";
 
-// Game pages from docs/plan.md. They are built one by one in Stage 1.
-const GAME_PAGES = [
-  { href: "/sales-floor", label: "Sales Floor" },
-  { href: "/stock-order", label: "Stock Order" },
-  { href: "/store-expansion", label: "Store Expansion" },
-  { href: "/profit-report", label: "Profit Report" },
-];
-
+// The home page is a 3D plaza: click a building to open that game page.
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-8 bg-zinc-50 p-6 dark:bg-black">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold">🛒 Supermarket Simulator</h1>
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Sell products, earn money, and grow your store.
+    <main className="relative flex-1">
+      <div className="absolute inset-0">
+        <EntranceScene />
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 p-4 text-center">
+        <h1 className="title-3d text-4xl font-black text-emerald-500">
+          🛒 Supermarket Simulator
+        </h1>
+        <p className="mt-1 text-sm font-medium text-emerald-950">
+          Click a building to play · drag to look around
         </p>
       </div>
 
-      <nav className="grid w-full max-w-md grid-cols-2 gap-3">
-        {GAME_PAGES.map((page) => (
-          <Link
-            key={page.href}
-            href={page.href}
-            className="rounded-xl bg-white p-4 text-center font-medium shadow-sm hover:bg-emerald-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-          >
-            {page.label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="flex gap-4 text-sm">
-        <Link href="/login" className="text-emerald-600 hover:underline">
+      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-4 rounded-xl bg-white/85 px-5 py-2 text-sm shadow-sm">
+        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
           Log in
         </Link>
-        <Link href="/signup" className="text-emerald-600 hover:underline">
+        <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
           Sign up
         </Link>
         <form action={logout}>
-          <button type="submit" className="text-zinc-500 hover:underline">
+          <button type="submit" className="text-zinc-600 hover:underline">
             Log out
           </button>
         </form>

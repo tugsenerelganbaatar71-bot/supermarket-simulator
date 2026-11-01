@@ -24,3 +24,62 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ---- 3D look: raised cards, chunky buttons, tilting menu tiles ---- */
+@theme {
+  --shadow-sm:
+    0 1px 0 rgb(255 255 255 / 0.9) inset, 0 2px 0 rgb(0 0 0 / 0.06),
+    0 6px 14px rgb(0 0 0 / 0.14), 0 14px 28px rgb(0 0 0 / 0.1);
+}
+
+button,
+a {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+button:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* Solid green buttons get a thick "bottom edge" so they look like real keys. */
+button[class*="bg-emerald-6"],
+button[class*="bg-amber-"],
+button[class*="bg-red-"] {
+  box-shadow: 0 4px 0 rgb(0 0 0 / 0.28), 0 8px 12px rgb(0 0 0 / 0.18);
+}
+
+.scene-3d {
+  perspective: 900px;
+}
+
+.tile-3d {
+  transform: rotateX(8deg) translateZ(0);
+  transform-style: preserve-3d;
+  box-shadow: 0 6px 0 #a7f3d0, 0 14px 22px rgb(0 0 0 / 0.2);
+  background: linear-gradient(160deg, #ffffff, #ecfdf5);
+}
+
+.tile-3d:hover {
+  transform: rotateX(0deg) translateY(-6px) scale(1.04);
+  box-shadow: 0 10px 0 #6ee7b7, 0 22px 30px rgb(0 0 0 / 0.25);
+}
+
+.tile-3d:active {
+  transform: rotateX(0deg) translateY(2px);
+  box-shadow: 0 2px 0 #6ee7b7;
+}
+
+.title-3d {
+  text-shadow: 0 1px 0 #34d399, 0 2px 0 #10b981, 0 3px 0 #059669,
+    0 4px 0 #047857, 0 8px 12px rgb(0 0 0 / 0.3);
+}
+
+.bg-store-3d {
+  background: radial-gradient(ellipse at 50% 0%, #d1fae5, transparent 60%),
+    linear-gradient(#f0fdf4, #e4e4e7);
+}
