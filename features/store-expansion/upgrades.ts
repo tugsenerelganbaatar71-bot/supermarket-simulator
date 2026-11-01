@@ -8,12 +8,17 @@ import {
 
 // Upgrade prices and effects for the store-expansion screen.
 
+/** Unlocking a product costs 60% of the catalog price (cheaper expansion). */
+export function productUnlockCost(product: Product) {
+  return Math.round(product.unlockCost * 0.6);
+}
+
 export function shelfUpgradeCost(game: GameState) {
-  return 60 * game.shelves.length;
+  return 40 * game.shelves.length;
 }
 
 export function checkoutUpgradeCost(game: GameState) {
-  return 250 * game.checkouts;
+  return 150 * game.checkouts;
 }
 
 /** The next product the supplier can unlock, in catalog order. */
@@ -45,7 +50,7 @@ export function buyCheckout(game: GameState): GameState {
 
 export function unlockProduct(game: GameState): GameState {
   const product = nextLockedProduct(game);
-  if (!product || product.unlockCost > game.money) return game;
-  const paid = pay(game, product.unlockCost);
+  if (!product || productUnlockCost(product) > game.money) return game;
+  const paid = pay(game, productUnlockCost(product));
   return { ...paid, unlockedProducts: [...paid.unlockedProducts, product.id] };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { SceneLighting } from "@/features/shared/scene-lighting";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { MAX_CHECKOUTS, MAX_SHELVES, type Shelf } from "@/features/shared/game-state";
@@ -32,10 +33,9 @@ export function ExpansionScene({ shelves, checkouts, level }: ExpansionSceneProp
   const counterSlots = nextCounter === null ? checkouts : checkouts + 1;
 
   return (
-    <Canvas shadows camera={{ position: [0, 9, 12], fov: 50 }} className="touch-none">
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 9, 12], fov: 50 }} className="touch-none">
       <color attach="background" args={["#fdf3dc"]} />
-      <ambientLight intensity={0.75} />
-      <directionalLight position={[6, 14, 8]} intensity={1.3} castShadow shadow-mapSize={[1024, 1024]} />
+      <SceneLighting sun={[6, 14, 8]} />
 
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, -2]} receiveShadow>
         <planeGeometry args={[24, 22]} />

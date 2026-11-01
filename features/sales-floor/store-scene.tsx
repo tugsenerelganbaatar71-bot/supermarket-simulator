@@ -1,12 +1,14 @@
 "use client";
 
+import { SceneLighting } from "@/features/shared/scene-lighting";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3, type Group } from "three";
 import { SHELF_CAPACITY, getProduct, type Shelf } from "@/features/shared/game-state";
+import { PRODUCT_LOOKS, ProductItem } from "@/features/shared/product-models";
 import { City } from "./city";
-import type { Customer } from "./simulation";
+import { frontAt, lineSlot, type Customer } from "./simulation";
 import { Walker, type Obstacle } from "./walker";
 
 // 3D view of the sales floor (three.js via @react-three/fiber).
@@ -25,21 +27,7 @@ type StoreSceneProps = {
   leaving: LeavingCustomer[];
   walking: boolean; // first-person mode instead of the orbit camera
   onExitWalk: () => void;
-};
-
-type Look = { color: string; shape: "box" | "sphere" | "cylinder"; size: number };
-
-const PRODUCT_LOOKS: Record<string, Look> = {
-  apple: { color: "#e53935", shape: "sphere", size: 0.3 },
-  bread: { color: "#d4a056", shape: "box", size: 0.32 },
-  milk: { color: "#f5f5f5", shape: "cylinder", size: 0.3 },
-  eggs: { color: "#fff1c1", shape: "sphere", size: 0.26 },
-  cheese: { color: "#fbc02d", shape: "box", size: 0.3 },
-  juice: { color: "#ff9800", shape: "box", size: 0.3 },
-  cookies: { color: "#8d6e63", shape: "cylinder", size: 0.32 },
-  coffee: { color: "#4e342e", shape: "cylinder", size: 0.3 },
-  chocolate: { color: "#6d4c41", shape: "box", size: 0.28 },
-  watermelon: { color: "#43a047", shape: "sphere", size: 0.36 },
+  onNearShop?: (shopId: string | null) => void;
 };
 
 const CUSTOMER_COLORS = ["#1e88e5", "#8e24aa", "#f4511e", "#00897b", "#c0ca33", "#d81b60", "#5e35b1", "#fb8c00"];
@@ -82,6 +70,7 @@ export function StoreScene({
   leaving,
   walking,
   onExitWalk,
+  onNearShop,
 }: StoreSceneProps) {
   // Things the first-person player cannot walk through.
   const obstacles: Obstacle[] = [
@@ -98,19 +87,9 @@ export function StoreScene({
   ];
 
   return (
-    <Canvas shadows camera={{ position: [0, 14, 24], fov: 50, far: 400 }} className="touch-none">
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 14, 24], fov: 50, far: 400 }} className="touch-none">
       <color attach="background" args={["#bfe3ff"]} />
-      <ambientLight intensity={0.7} />
-      <directionalLight
-        position={[6, 14, 8]}
-        intensity={1.4}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-14}
-        shadow-camera-right={14}
-        shadow-camera-top={14}
-        shadow-camera-bottom={-14}
-      />
+      <SceneLighting shadowSize={14} contactScale={40} />
 
       <City />
       <Building />
@@ -128,14 +107,14 @@ export function StoreScene({
         <CheckoutCounter key={i} x={counterX(i, checkouts)} number={i + 1} />
       ))}
 
-      {customers.map((customer, index) => (
+      {customers.map((customer) => (
         <Person
           key={customer.id}
           id={customer.id}
           start={ENTRANCE}
-          target={queueSpot(index, checkouts)}
+          target={queueSpot(lineSlot(customers, customer, checkouts), checkouts)}
           basket={
-            index < checkouts
+            frontAt(customers, customer.counter) === customer
               ? customer.basket.map((b) => getProduct(b.productId).emoji).join("")
               : undefined
           }
@@ -153,7 +132,7 @@ export function StoreScene({
       ))}
 
       {walking ? (
-        <Walker obstacles={obstacles} onExit={onExitWalk} />
+        <Walker obstacles={obstacles} onExit={onExitWalk} onNearShop={onNearShop} />
       ) : (
         <OrbitControls
           target={[0, 0, 3]}
@@ -263,17 +242,6 @@ function ShelfUnit({ shelf, price, position }: { shelf: Shelf; price: number; po
   );
 }
 
-function ProductItem({ look, position }: { look: Look; position: [number, number, number] }) {
-  const s = look.size;
-  return (
-    <mesh position={position} castShadow>
-      {look.shape === "sphere" && <sphereGeometry args={[s / 2, 16, 12]} />}
-      {look.shape === "box" && <boxGeometry args={[s, s, s * 0.8]} />}
-      {look.shape === "cylinder" && <cylinderGeometry args={[s / 2.4, s / 2.4, s, 16]} />}
-      <meshStandardMaterial color={look.color} roughness={0.5} />
-    </mesh>
-  );
-}
 
 function CheckoutCounter({ x, number }: { x: number; number: number }) {
   return (

@@ -15,6 +15,7 @@ import {
   buyShelf,
   checkoutUpgradeCost,
   nextLockedProduct,
+  productUnlockCost,
   shelfUpgradeCost,
   unlockProduct,
 } from "./upgrades";
@@ -74,14 +75,14 @@ function Upgrades({ game }: { game: GameState }) {
           title={nextProduct ? `Unlock ${nextProduct.name}` : "New product types"}
           description="Add a new item to the supplier's list so you can stock it."
           progress={`${game.unlockedProducts.length}/${CATALOG.length} products`}
-          cost={nextProduct ? nextProduct.unlockCost : null}
+          cost={nextProduct ? productUnlockCost(nextProduct) : null}
           money={game.money}
           onBuy={() => updateGame(unlockProduct)}
         />
         <UpgradeCard
           emoji="🧾"
-          title="More checkout counters"
-          description="Serve customers faster so the line doesn't get too long."
+          title="Hire an AI cashier"
+          description="Each new counter is run by an AI cashier that rings up customers for you. Counter 1 stays manual."
           progress={`${game.checkouts}/${MAX_CHECKOUTS} counters`}
           cost={game.checkouts < MAX_CHECKOUTS ? checkoutUpgradeCost(game) : null}
           money={game.money}
@@ -126,6 +127,14 @@ function UpgradeCard({ emoji, title, description, progress, cost, money, onBuy }
       <h2 className="mt-2 text-lg font-semibold">{title}</h2>
       <p className="mt-1 flex-1 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
       <p className="mt-3 text-xs text-zinc-500">{progress}</p>
+      {!maxed && (
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+          <div
+            className={`h-full rounded-full ${affordable ? "bg-emerald-500" : "bg-amber-400"}`}
+            style={{ width: `${Math.min(100, (money / cost) * 100)}%` }}
+          />
+        </div>
+      )}
       <button
         disabled={!affordable}
         onClick={onBuy}

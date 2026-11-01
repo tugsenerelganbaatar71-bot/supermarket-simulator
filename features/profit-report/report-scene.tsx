@@ -1,5 +1,6 @@
 "use client";
 
+import { SceneLighting } from "@/features/shared/scene-lighting";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
@@ -24,10 +25,9 @@ export function ReportScene({ income, spending, sellers }: ReportSceneProps) {
   const maxUnits = Math.max(...sellers.map((s) => s.units), 1);
 
   return (
-    <Canvas shadows camera={{ position: [0, 6, 11], fov: 50 }} className="touch-none">
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 6, 11], fov: 50 }} className="touch-none">
       <color attach="background" args={["#e9f1fb"]} />
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[5, 10, 6]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
+      <SceneLighting sun={[5, 10, 6]} />
 
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[24, 12]} />

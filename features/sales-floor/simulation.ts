@@ -9,9 +9,22 @@ export type Customer = {
   emoji: string;
   basket: BasketItem[];
   total: number;
+  counter: number; // which checkout counter this customer lines up at (0 = the manual one)
 };
 
+/** The customer being served right now at a counter (first in that counter's line). */
+export function frontAt(queue: Customer[], counter: number): Customer | undefined {
+  return queue.find((c) => c.counter === counter);
+}
+
+/** Where a customer stands in the shop: lane = counter, depth = place in that counter's line. */
+export function lineSlot(queue: Customer[], customer: Customer, checkouts: number): number {
+  const depth = queue.filter((c) => c.counter === customer.counter).indexOf(customer);
+  return customer.counter + depth * checkouts;
+}
+
 export const MAX_QUEUE = 8;
+const AI_CASHIER_SPEED = 0.45; // chance per second that an AI cashier finishes its customer
 const CUSTOMER_FACES = ["🧑", "👩", "👨", "👵", "👴", "👧", "🧔", "👱"];
 
 function randomInt(max: number) {
@@ -48,8 +61,18 @@ export function runTick(
   nextId: number,
 ): { game: GameState; queue: Customer[]; events: string[] } {
   const events: string[] = [];
-  // 1. Customers at the counters wait until the player rings them up (see payCustomer).
+  // 1. Counter 1 is manual: that customer waits until the player rings them up
+  //    (see payCustomer). Every other counter has an AI cashier that rings up
+  //    its customer on its own, usually within a couple of seconds.
   const remaining: Customer[] = [...queue];
+  for (let counter = 1; counter < game.checkouts; counter++) {
+    const customer = frontAt(remaining, counter);
+    if (customer && Math.random() < AI_CASHIER_SPEED) {
+      game = payCustomer(game, customer);
+      remaining.splice(remaining.indexOf(customer), 1);
+      events.push(`🤖 cashier ${counter + 1} rang up ${customer.emoji} for ${customer.total}`);
+    }
+  }
 
   // 2. Maybe a new customer walks in and picks products from the shelves.
   const shelves = game.shelves.map((shelf) => ({ ...shelf }));
@@ -80,7 +103,12 @@ export function runTick(
 
       if (basket.length > 0) {
         const total = basket.reduce((sum, item) => sum + item.price, 0);
-        remaining.push({ id: nextId, emoji, basket, total });
+        // join the shortest line (ties go to the lowest counter)
+        const loads = Array.from({ length: game.checkouts }, (_, c) =>
+          remaining.filter((r) => r.counter === c).length,
+        );
+        const counter = loads.indexOf(Math.min(...loads));
+        remaining.push({ id: nextId, emoji, basket, total, counter });
       } else if (tooExpensive) {
         events.push(`${emoji} thought the prices were too high and left`);
       } else {

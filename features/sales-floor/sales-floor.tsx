@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatMoney, getProduct } from "@/features/shared/game-state";
 import { GameLoading, TopBar } from "@/features/shared/top-bar";
-import { readGame, resetGame, useGame, writeGame } from "@/features/shared/use-game";
-import { MAX_QUEUE, payCustomer, runTick, type Customer } from "./simulation";
+import { readGame, resetGame, updateGame, useGame, writeGame } from "@/features/shared/use-game";
+import { MAX_QUEUE, frontAt, payCustomer, runTick, type Customer } from "./simulation";
+import { SHOPS, buyOffer, findGood, shopOffers } from "./shops";
 import { StoreScene, type LeavingCustomer } from "./store-scene";
 
 const TICK_MS = 1000;
@@ -21,6 +22,7 @@ export default function SalesFloor() {
   const [log, setLog] = useState<string[]>([]);
   const [entered, setEntered] = useState<Record<number, string>>({});
   const [wrong, setWrong] = useState<number | null>(null); // customer id with a wrong total
+  const [nearShop, setNearShop] = useState<string | null>(null); // shop door you are standing at
   const queueRef = useRef<Customer[]>([]);
   const nextIdRef = useRef(1);
 
@@ -37,7 +39,7 @@ export default function SalesFloor() {
       // Customers who just paid walk to the exit before disappearing.
       const now = Date.now();
       const paid = previous
-        .map((customer, counterIndex) => ({ id: customer.id, counterIndex, until: now + LEAVE_MS }))
+        .map((customer) => ({ id: customer.id, counterIndex: customer.counter, until: now + LEAVE_MS }))
         .filter((c) => !result.queue.some((q) => q.id === c.id));
       setLeaving((prev) => [...prev.filter((l) => l.until > now), ...paid]);
 
@@ -48,6 +50,31 @@ export default function SalesFloor() {
     return () => window.clearInterval(timer);
   }, [open]);
 
+  // In walk mode, press 1-3 at a shop door to buy a pack of that product.
+  const shop = walking ? (SHOPS.find((s) => s.id === nearShop) ?? null) : null;
+  useEffect(() => {
+    if (!shop) return;
+    const onKey = (e: KeyboardEvent) => {
+      const index = Number(e.key) - 1;
+      const offer = shopOffers(shop, readGame())[index];
+      if (!offer) return;
+      const before = readGame();
+      updateGame((g) => buyOffer(g, shop, offer.id));
+      const bought = readGame().money < before.money;
+      const what = offer.quantity > 1 ? `${offer.quantity} ${offer.name}` : offer.name;
+      setLog((prev) =>
+        [
+          bought
+            ? `${shop.emoji} bought ${what} at the ${shop.name} for ${formatMoney(offer.price)}`
+            : `Not enough money for ${offer.name}`,
+          ...prev,
+        ].slice(0, LOG_SIZE),
+      );
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shop]);
+
   // The player adds up the basket and types the total; a correct total rings the customer up.
   function handleCharge(customer: Customer) {
     if (Number(entered[customer.id]) !== customer.total) {
@@ -55,8 +82,8 @@ export default function SalesFloor() {
       return;
     }
     const previous = queueRef.current;
-    const counterIndex = previous.findIndex((c) => c.id === customer.id);
-    if (counterIndex === -1) return;
+    const counterIndex = customer.counter;
+    if (!previous.some((c) => c.id === customer.id)) return;
     writeGame(payCustomer(readGame(), customer));
     queueRef.current = previous.filter((c) => c.id !== customer.id);
     setCustomers(queueRef.current);
@@ -119,11 +146,43 @@ export default function SalesFloor() {
               customers={customers}
               leaving={leaving}
               walking={walking}
-              onExitWalk={() => setWalking(false)}
+              onExitWalk={() => {
+                setWalking(false);
+                setNearShop(null);
+              }}
+              onNearShop={setNearShop}
             />
+            {shop && (
+              <div className="pointer-events-none absolute left-1/2 top-4 w-72 -translate-x-1/2 rounded-2xl bg-white/95 p-4 shadow-lg">
+                <h3 className="font-bold">
+                  {shop.emoji} {shop.name}
+                </h3>
+                <p className="text-xs text-zinc-500">
+                  Press a number to buy · you have {formatMoney(game.money)}
+                </p>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {shopOffers(shop, game).map((offer, i) => (
+                    <li key={offer.id} className="flex justify-between gap-3">
+                      <span>
+                        <kbd className="rounded bg-zinc-200 px-1.5 font-mono">{i + 1}</kbd> {offer.emoji}{" "}
+                        {offer.name}
+                        {offer.quantity > 1 ? ` ×${offer.quantity}` : ""}
+                        {shop.walkIn && game.owned[offer.id] ? ` (own ${game.owned[offer.id]})` : ""}
+                      </span>
+                      <span className={offer.price > game.money ? "text-rose-500" : ""}>
+                        {formatMoney(offer.price)}
+                      </span>
+                    </li>
+                  ))}
+                  {shopOffers(shop, game).length === 0 && (
+                    <li className="text-zinc-500">Nothing here that your store sells yet.</li>
+                  )}
+                </ul>
+              </div>
+            )}
             <p className="pointer-events-none absolute bottom-2 left-3 rounded bg-white/80 px-2 py-1 text-xs text-zinc-600">
               {walking
-                ? "Click the scene to look around · W A S D to walk · Shift to run · Esc to exit"
+                ? "Click the scene to look around · W A S D to walk · Shift to run · walk to a shop on the street to buy (go inside the Fashion and Game stores) · Esc to exit"
                 : "Drag to rotate · scroll to zoom · right-drag to move"}
             </p>
             {game.shelves.some((shelf) => shelf.quantity === 0) && (
@@ -143,13 +202,15 @@ export default function SalesFloor() {
               </h2>
               <div className="flex flex-wrap gap-3">
                 {Array.from({ length: game.checkouts }, (_, i) => {
-                  const customer = customers[i];
+                  const customer = frontAt(customers, i);
                   return (
                     <div
                       key={i}
                       className="flex w-40 flex-col items-center rounded-xl border-2 border-dashed border-emerald-300 p-3 text-center dark:border-emerald-800"
                     >
-                      <span className="text-xs text-zinc-500">Counter {i + 1}</span>
+                      <span className="text-xs text-zinc-500">
+                        Counter {i + 1} · {i === 0 ? "👤 you" : "🤖 AI"}
+                      </span>
                       <span className="my-1 text-3xl">{customer ? customer.emoji : "🧾"}</span>
                       {customer ? (
                         <>
@@ -160,6 +221,11 @@ export default function SalesFloor() {
                               </li>
                             ))}
                           </ul>
+                          {i > 0 ? (
+                            <span className="mt-1 rounded-lg bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                              🤖 AI cashier ringing up…
+                            </span>
+                          ) : (
                           <form
                             className="mt-1 flex w-full flex-col gap-1"
                             onSubmit={(e) => {
@@ -189,6 +255,7 @@ export default function SalesFloor() {
                               <span className="text-xs text-rose-500">Wrong total, add it up again</span>
                             )}
                           </form>
+                          )}
                         </>
                       ) : (
                         <span className="min-h-5 text-sm">Free</span>
@@ -198,7 +265,7 @@ export default function SalesFloor() {
                 })}
               </div>
               <p className="mt-4 text-sm text-zinc-500">
-                Waiting in line: {Math.max(0, customers.length - game.checkouts)}/
+                Waiting in line: {Math.max(0, customers.length - Array.from({ length: game.checkouts }, (_, c) => frontAt(customers, c)).filter(Boolean).length)}/
                 {MAX_QUEUE - game.checkouts}
               </p>
             </div>
@@ -219,6 +286,26 @@ export default function SalesFloor() {
                 </ul>
               )}
             </div>
+          </section>
+
+          <section className="rounded-2xl bg-white p-4 shadow-sm dark:bg-zinc-900">
+            <h2 className="mb-2 font-semibold">🎒 Your bag</h2>
+            {Object.keys(game.owned).length === 0 ? (
+              <p className="text-sm text-zinc-500">
+                Nothing yet. Walk inside the Fashion Store or the Game Store on the street (walk mode) to buy clothes and games.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(game.owned).map(([id, count]) => {
+                  const good = findGood(id);
+                  return (
+                    <span key={id} className="rounded-full bg-violet-50 px-3 py-1 text-sm text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                      {good?.emoji} {good?.name ?? id} ×{count}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <div className="text-right">

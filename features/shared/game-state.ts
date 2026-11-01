@@ -48,6 +48,7 @@ export type GameState = {
   shelves: Shelf[];
   unlockedProducts: string[];
   storage: Record<string, number>; // productId -> units in the back room
+  owned: Record<string, number>; // things you bought for yourself in other shops (clothes, games)
   prices: Record<string, number>; // productId -> selling price
   stats: GameStats;
 };
@@ -70,6 +71,7 @@ export function createInitialGame(): GameState {
     ],
     unlockedProducts: ["apple", "bread", "milk"],
     storage: { apple: 10, bread: 5, milk: 5 },
+    owned: {},
     prices: Object.fromEntries(CATALOG.map((p) => [p.id, p.suggestedPrice])),
     stats: {
       income: 0,

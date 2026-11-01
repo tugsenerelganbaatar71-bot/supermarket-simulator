@@ -1,5 +1,6 @@
 "use client";
 
+import { SceneLighting } from "@/features/shared/scene-lighting";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
@@ -26,10 +27,9 @@ function palletPosition(index: number): [number, number, number] {
 
 export function StorageScene({ products, storage }: StorageSceneProps) {
   return (
-    <Canvas shadows camera={{ position: [0, 6.5, 9.5], fov: 50 }} className="touch-none">
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 6.5, 9.5], fov: 50 }} className="touch-none">
       <color attach="background" args={["#e8eef5"]} />
-      <ambientLight intensity={0.75} />
-      <directionalLight position={[5, 10, 6]} intensity={1.3} castShadow shadow-mapSize={[1024, 1024]} />
+      <SceneLighting sun={[5, 10, 6]} />
 
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, 1]} receiveShadow>
         <planeGeometry args={[22, 14]} />
